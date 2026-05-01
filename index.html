@@ -2,8 +2,14 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>아기 백색소음 믹서 (오프라인)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>아기 백색소음 믹서</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f3460">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="백색소음">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -192,6 +198,11 @@
         <option value="240">4시간</option>
       </select>
     </div>
+    <button class="all-btn" id="refreshBtn" title="최신 버전으로 새로고침">🔄</button>
+  </div>
+  <div id="updateBanner" style="display:none;background:rgba(135,206,250,0.18);border:1px solid rgba(135,206,250,0.5);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;align-items:center;gap:10px;">
+    <span style="flex:1">✨ 새 버전이 준비됐어요. 탭하면 적용됩니다.</span>
+    <button class="all-btn" id="applyUpdate" style="padding:5px 10px;font-size:12px;">업데이트</button>
   </div>
 
   <div id="categories"></div>
@@ -571,6 +582,61 @@
       updateStatus();
       updateMediaSession();
     }, 80);
+  }
+
+  // -------- Service Worker / PWA update flow --------
+  const refreshBtn = document.getElementById('refreshBtn');
+  const updateBanner = document.getElementById('updateBanner');
+  const applyUpdateBtn = document.getElementById('applyUpdate');
+  let waitingWorker = null;
+
+  refreshBtn.addEventListener('click', async () => {
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '⏳';
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) await reg.update();
+      }
+    } catch {}
+    location.reload();
+  });
+
+  function showUpdateBanner(worker) {
+    waitingWorker = worker;
+    updateBanner.style.display = 'flex';
+  }
+
+  applyUpdateBtn.addEventListener('click', () => {
+    if (waitingWorker) {
+      waitingWorker.postMessage('SKIP_WAITING');
+    }
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        if (reg.waiting) showUpdateBanner(reg.waiting);
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateBanner(nw);
+            }
+          });
+        });
+        // Periodically check for updates while page is open.
+        setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+      }).catch(() => {});
+
+      let reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloading) return;
+        reloading = true;
+        location.reload();
+      });
+    });
   }
 </script>
 </body>
