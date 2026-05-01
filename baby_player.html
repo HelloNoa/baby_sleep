@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>아기 백색소음 믹서 (오프라인)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    color: #fff;
+    padding: 20px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header { text-align: center; padding: 20px 10px 30px; }
+  h1 { font-size: 26px; font-weight: 600; margin-bottom: 6px; }
+  .sub { opacity: 0.65; font-size: 14px; }
+  .badge {
+    display: inline-block;
+    margin-top: 8px;
+    background: rgba(135,206,250,0.15);
+    color: #87cefa;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+  }
+
+  .master-bar {
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 14px 18px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .all-btn {
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .all-btn:hover { background: rgba(255,255,255,0.2); }
+  .stop-all { background: rgba(220,80,80,0.25); border-color: rgba(220,80,80,0.45); }
+  .vol-section { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 10px; }
+  .vol-section label { font-size: 13px; opacity: 0.8; }
+  .vol-section input { flex: 1; }
+  .vol-val { opacity: 0.6; font-size: 12px; min-width: 28px; }
+  .timer-section { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .timer-section select {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+
+  .category { margin-bottom: 22px; }
+  .cat-title {
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 14px;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+  }
+  .card:hover { background: rgba(255,255,255,0.1); }
+  .card.active {
+    background: rgba(135,206,250,0.2);
+    border-color: rgba(135,206,250,0.6);
+    box-shadow: 0 0 20px rgba(135,206,250,0.15);
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .icon { font-size: 22px; width: 32px; text-align: center; }
+  .name { font-size: 14px; font-weight: 500; flex: 1; }
+  .led {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    transition: all 0.2s;
+  }
+  .card.active .led {
+    background: #87cefa;
+    box-shadow: 0 0 10px #87cefa;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .meta {
+    font-size: 11px;
+    opacity: 0.55;
+    margin-bottom: 10px;
+    padding-left: 42px;
+  }
+  .vol-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .vol-row input[type=range] {
+    flex: 1;
+    accent-color: #87cefa;
+    height: 4px;
+  }
+  .vol-row .val {
+    font-size: 11px;
+    opacity: 0.6;
+    min-width: 28px;
+    text-align: right;
+  }
+
+  .preset-bar {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-top: 22px;
+  }
+  .preset-title { font-size: 12px; opacity: 0.6; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .preset-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .preset {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .preset:hover { background: rgba(135,206,250,0.25); border-color: rgba(135,206,250,0.5); }
+
+  .status-bar {
+    text-align: center;
+    margin-top: 18px;
+    font-size: 12px;
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🌙 아기 백색소음 믹서</h1>
+    <div class="sub">18개 음원 · 여러 소리 동시 재생 · 인터넷 불필요</div>
+    <div class="badge">✓ 오프라인 작동 · ✓ Public Domain · ✓ 무한 반복</div>
+  </header>
+
+  <div class="master-bar">
+    <button class="all-btn stop-all" id="stopAll">⏹ 전체 정지</button>
+    <div class="vol-section">
+      <label>마스터</label>
+      <input type="range" id="masterVol" min="0" max="100" value="70">
+      <span class="vol-val" id="masterVolVal">70</span>
+    </div>
+    <div class="timer-section">
+      <span>⏱</span>
+      <select id="timer">
+        <option value="0">계속 재생</option>
+        <option value="15">15분</option>
+        <option value="30">30분</option>
+        <option value="60">1시간</option>
+        <option value="120">2시간</option>
+        <option value="240">4시간</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="categories"></div>
+
+  <div class="preset-bar">
+    <div class="preset-title">⚡ 프리셋 (자주 쓰는 조합)</div>
+    <div class="preset-buttons" id="presets"></div>
+  </div>
+
+  <div class="status-bar" id="status">소리 카드를 클릭하면 켜집니다 · 여러 개 동시 켜기 가능</div>
+</div>
+
+<script>
+  const SOUNDS = [
+    // 백색소음 (스튜디오 24-bit 녹음)
+    { id: 'white_noise',    name: '화이트 노이즈',  icon: '⚪', cat: 'noise',
+      file: 'white_noise.mp3', meta: '10분 · 24-bit 스튜디오' },
+    { id: 'pink_noise',     name: '핑크 노이즈',    icon: '🌸', cat: 'noise',
+      file: 'pink_noise.mp3', meta: '10분 · 부드러운 노이즈' },
+    { id: 'brown_noise',    name: '브라운 노이즈',  icon: '🟫', cat: 'noise',
+      file: 'brown_noise.mp3', meta: '10분 · ⭐⭐⭐⭐⭐ 인기' },
+
+    // 빗소리 (강도별)
+    { id: 'soft_rain',      name: '잔잔한 보슬비',  icon: '☔', cat: 'rain',
+      file: 'soft_rain.mp3', meta: '9분 · 가장 부드러움' },
+    { id: 'light_rain',     name: '약한 비',        icon: '🌦️', cat: 'rain',
+      file: 'light_rain.mp3', meta: '15분 · 잔잔히 내리는 비' },
+    { id: 'rain_window',    name: '창문 빗방울',    icon: '🪟', cat: 'rain',
+      file: 'rain_window.mp3', meta: '창문에 떨어지는 빗소리' },
+    { id: 'rain',           name: '폭우',           icon: '🌧️', cat: 'rain',
+      file: 'rain.mp3', meta: '15분 · 강한 빗줄기' },
+    { id: 'thunderstorm',   name: '번개 뇌우',      icon: '⛈️', cat: 'rain',
+      file: 'thunderstorm.mp3', meta: '16분 · 비 + 천둥' },
+
+    // 자연 소리 (실제 현장 녹음)
+    { id: 'ocean',          name: '파도 소리',      icon: '🌊', cat: 'nature',
+      file: 'ocean.mp3', meta: '15분 · La Jolla 해변' },
+    { id: 'fireplace',      name: '모닥불',         icon: '🔥', cat: 'nature',
+      file: 'fireplace.mp3', meta: '15분 · 진짜 벽난로' },
+    { id: 'birds_seoul',    name: '한강 새소리',    icon: '🐦', cat: 'nature',
+      file: 'birds_seoul.mp3', meta: '4분 · 반포한강공원' },
+    { id: 'forest',         name: '숲 소리',        icon: '🌲', cat: 'nature',
+      file: 'forest.mp3', meta: '체코 숲 실제 녹음' },
+
+    // 쉬쉬 (엄마/아빠가 내는 진정 소리)
+    { id: 'shushing_real',    name: '쉬이이이~',     icon: '🤫', cat: 'shush',
+      file: 'shushing_real.mp3', meta: '56초 · 실제 녹음 (Pixabay)' },
+
+    // 분위기
+    { id: 'wind_chimes',    name: '풍경/귀뚜라미',  icon: '🎐', cat: 'ambient',
+      file: 'wind_chimes.mp3', meta: '3분 · 풍경+귀뚜라미+종' },
+
+    // 자장가 음악 (오르골 / 자장가)
+    { id: 'lullaby',        name: '아기 자장가',    icon: '🍼', cat: 'music',
+      file: 'lullaby.mp3', meta: '3분 · 부드러운 자장가' },
+    { id: 'musicbox_brahms',name: '브람스 왈츠',    icon: '🎵', cat: 'music',
+      file: 'musicbox_brahms.mp3', meta: '오르골 · 브람스' },
+    { id: 'musicbox_bach',  name: 'Bach G선상의 아리아', icon: '🎼', cat: 'music',
+      file: 'musicbox_bach.mp3', meta: '오르골 · 바흐' },
+    { id: 'musicbox_chopin',name: '쇼팽 야상곡',    icon: '🎶', cat: 'music',
+      file: 'musicbox_chopin.mp3', meta: '오르골 · 쇼팽' },
+  ];
+
+  const CATEGORIES = [
+    { key: 'noise',   label: '🔊 백색소음 (24-bit 스튜디오 녹음)' },
+    { key: 'rain',    label: '🌧️ 빗소리 (강도별)' },
+    { key: 'nature',  label: '🌿 자연 소리 (실제 현장 녹음)' },
+    { key: 'shush',   label: '🤫 쉬쉬 소리 (Karp 진정법)' },
+    { key: 'ambient', label: '🎐 분위기' },
+    { key: 'music',   label: '🎼 자장가 / 오르골' },
+  ];
+
+  const PRESETS = [
+    { name: '🌙 신생아 잠재우기', mix: { shushing_real: 60, brown_noise: 35, lullaby: 25 } },
+    { name: '🤫 쉬이이이 + 빗소리', mix: { shushing_real: 65, soft_rain: 40 } },
+    { name: '☔ 보슬비 자장가',    mix: { soft_rain: 70, lullaby: 35 } },
+    { name: '🌦️ 비 오는 오후',     mix: { light_rain: 65, fireplace: 30 } },
+    { name: '🪟 창가의 빗소리',    mix: { rain_window: 80, brown_noise: 25 } },
+    { name: '⛈️ 뇌우 ASMR',         mix: { thunderstorm: 75, brown_noise: 20 } },
+    { name: '🏖️ 바닷가 휴식',       mix: { ocean: 75, pink_noise: 20 } },
+    { name: '🔥 캠프파이어',        mix: { fireplace: 70, wind_chimes: 30, brown_noise: 25 } },
+    { name: '🌅 숲속 아침',          mix: { forest: 60, birds_seoul: 50 } },
+    { name: '💤 깊은 잠',          mix: { brown_noise: 60, soft_rain: 30 } },
+    { name: '🎵 브람스 + 빗소리',    mix: { musicbox_brahms: 55, soft_rain: 30 } },
+    { name: '🎼 바흐 + 빗소리',      mix: { musicbox_bach: 55, light_rain: 30 } },
+    { name: '🌊 해변 자장가',        mix: { ocean: 55, lullaby: 40 } },
+  ];
+
+  const tracks = {};
+  let masterVolume = 0.7;
+  let timerHandle = null;
+
+  const catContainer = document.getElementById('categories');
+  CATEGORIES.forEach(cat => {
+    const section = document.createElement('div');
+    section.className = 'category';
+    section.innerHTML = `<div class="cat-title">${cat.label}</div><div class="grid"></div>`;
+    const grid = section.querySelector('.grid');
+    SOUNDS.filter(s => s.cat === cat.key).forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.id = s.id;
+      card.innerHTML = `
+        <div class="card-head">
+          <div class="icon">${s.icon}</div>
+          <div class="name">${s.name}</div>
+          <div class="led"></div>
+        </div>
+        <div class="meta">${s.meta}</div>
+        <div class="vol-row">
+          <span style="font-size:11px;opacity:0.5">🔉</span>
+          <input type="range" min="0" max="100" value="50" data-vol="${s.id}">
+          <span class="val" data-val="${s.id}">50</span>
+        </div>
+      `;
+      grid.appendChild(card);
+
+      const audio = new Audio();
+      audio.loop = true;
+      audio.preload = 'metadata';
+      audio.volume = 0;
+      audio.src = s.file;
+      tracks[s.id] = { audio, vol: 0.5, active: false };
+
+      card.addEventListener('click', e => {
+        if (e.target.tagName === 'INPUT') return;
+        toggleTrack(s.id);
+      });
+
+      const slider = card.querySelector(`input[data-vol="${s.id}"]`);
+      slider.addEventListener('click', e => e.stopPropagation());
+      slider.addEventListener('input', () => {
+        tracks[s.id].vol = slider.value / 100;
+        card.querySelector(`[data-val="${s.id}"]`).textContent = slider.value;
+        updateVolume(s.id);
+      });
+    });
+    catContainer.appendChild(section);
+  });
+
+  function toggleTrack(id) {
+    const t = tracks[id];
+    const card = document.querySelector(`.card[data-id="${id}"]`);
+    if (t.active) {
+      t.audio.pause();
+      t.active = false;
+      card.classList.remove('active');
+    } else {
+      t.audio.play().catch(e => {
+        document.getElementById('status').textContent = '재생 실패: ' + e.message;
+      });
+      t.active = true;
+      card.classList.add('active');
+      updateVolume(id);
+    }
+    updateStatus();
+  }
+
+  function updateVolume(id) {
+    const t = tracks[id];
+    t.audio.volume = t.active ? t.vol * masterVolume : 0;
+  }
+
+  function updateStatus() {
+    const playing = Object.entries(tracks).filter(([, t]) => t.active).length;
+    const status = document.getElementById('status');
+    if (playing === 0) status.textContent = '재생 중인 소리 없음';
+    else status.textContent = `🎧 ${playing}개 소리 동시 재생 중 · 무한 반복`;
+  }
+
+  document.getElementById('masterVol').addEventListener('input', e => {
+    masterVolume = e.target.value / 100;
+    document.getElementById('masterVolVal').textContent = e.target.value;
+    Object.keys(tracks).forEach(updateVolume);
+  });
+
+  document.getElementById('stopAll').addEventListener('click', () => {
+    Object.entries(tracks).forEach(([id, t]) => {
+      if (t.active) {
+        t.audio.pause();
+        t.active = false;
+        document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
+      }
+    });
+    updateStatus();
+  });
+
+  document.getElementById('timer').addEventListener('change', e => {
+    if (timerHandle) { clearTimeout(timerHandle); timerHandle = null; }
+    const min = parseInt(e.target.value, 10);
+    if (min > 0) {
+      timerHandle = setTimeout(() => {
+        const startMaster = masterVolume;
+        let step = 0;
+        const totalSteps = 60;
+        const fade = setInterval(() => {
+          step++;
+          masterVolume = startMaster * (1 - step / totalSteps);
+          Object.keys(tracks).forEach(updateVolume);
+          if (step >= totalSteps) {
+            clearInterval(fade);
+            Object.entries(tracks).forEach(([id, t]) => {
+              if (t.active) {
+                t.audio.pause();
+                t.active = false;
+                document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
+              }
+            });
+            masterVolume = startMaster;
+            document.getElementById('masterVol').value = startMaster * 100;
+            document.getElementById('masterVolVal').textContent = Math.round(startMaster * 100);
+            document.getElementById('status').textContent = '⏱ 타이머 종료';
+          }
+        }, 250);
+      }, min * 60 * 1000);
+      document.getElementById('status').textContent = `⏱ ${min}분 후 자동 종료 예약됨`;
+    }
+  });
+
+  const presetContainer = document.getElementById('presets');
+  PRESETS.forEach(preset => {
+    const btn = document.createElement('button');
+    btn.className = 'preset';
+    btn.textContent = preset.name;
+    btn.addEventListener('click', () => applyPreset(preset));
+    presetContainer.appendChild(btn);
+  });
+
+  function applyPreset(preset) {
+    Object.entries(tracks).forEach(([id, t]) => {
+      if (t.active) {
+        t.audio.pause();
+        t.active = false;
+        document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
+      }
+    });
+    setTimeout(() => {
+      Object.entries(preset.mix).forEach(([id, vol]) => {
+        if (!tracks[id]) return;
+        tracks[id].vol = vol / 100;
+        const slider = document.querySelector(`input[data-vol="${id}"]`);
+        if (slider) slider.value = vol;
+        const valEl = document.querySelector(`[data-val="${id}"]`);
+        if (valEl) valEl.textContent = vol;
+        const card = document.querySelector(`.card[data-id="${id}"]`);
+        tracks[id].audio.play().catch(()=>{});
+        tracks[id].active = true;
+        tracks[id].audio.volume = (vol / 100) * masterVolume;
+        card.classList.add('active');
+      });
+      updateStatus();
+    }, 80);
+  }
+</script>
+</body>
+</html>
