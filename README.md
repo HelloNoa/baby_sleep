@@ -4,17 +4,17 @@
 
 ## 사용법
 
-`baby_player.html`을 브라우저로 열기만 하면 됩니다. 같은 폴더에 있는 MP3 파일들을 자동으로 참조합니다.
+`index.html`을 브라우저로 열기만 하면 됩니다. 같은 폴더에 있는 MP3 파일들을 자동으로 참조합니다.
 
 ```bash
 # macOS
-open baby_player.html
+open index.html
 
 # Windows
-start baby_player.html
+start index.html
 
 # Linux
-xdg-open baby_player.html
+xdg-open index.html
 ```
 
 ## 기능
