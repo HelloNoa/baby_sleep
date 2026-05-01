@@ -285,6 +285,13 @@
   let timerHandle = null;
   let audioCtx = null;
 
+  // iOS audio session keeper: a silent <audio> playing in loop, NOT routed
+  // through Web Audio. Keeps iOS from pausing the page when backgrounded /
+  // screen locked. Without this, AudioContext suspends and the mix stops.
+  const silentKeeper = new Audio('silent.wav');
+  silentKeeper.loop = true;
+  silentKeeper.preload = 'auto';
+
   function getAudioCtx() {
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -292,6 +299,26 @@
     }
     return audioCtx;
   }
+
+  function startSessionKeeper() {
+    if (silentKeeper.paused) {
+      silentKeeper.play().catch(() => {});
+    }
+  }
+
+  function stopSessionKeeper() {
+    silentKeeper.pause();
+  }
+
+  function anyActive() {
+    return Object.values(tracks).some(t => t.active);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && audioCtx && audioCtx.state === 'suspended' && anyActive()) {
+      audioCtx.resume().catch(() => {});
+    }
+  });
 
   function ensureRouting(id) {
     const t = tracks[id];
@@ -362,11 +389,13 @@
       t.active = false;
       card.classList.remove('active');
       updateVolume(id);
+      if (!anyActive()) stopSessionKeeper();
     } else {
       const ctx = getAudioCtx();
       if (ctx.state === 'suspended') {
         try { await ctx.resume(); } catch {}
       }
+      startSessionKeeper();
       ensureRouting(id);
       try {
         await t.audio.play();
@@ -421,18 +450,22 @@
           updateVolume(id);
         }
       });
+      stopSessionKeeper();
       updateStatus();
       updateMediaSession();
     });
     navigator.mediaSession.setActionHandler('play', () => {
+      let resumed = false;
       Object.entries(tracks).forEach(([id, t]) => {
         if (t.audio.paused && t.gainNode) {
           t.audio.play().catch(()=>{});
           t.active = true;
+          resumed = true;
           document.querySelector(`.card[data-id="${id}"]`).classList.add('active');
           updateVolume(id);
         }
       });
+      if (resumed) startSessionKeeper();
       updateStatus();
       updateMediaSession();
     });
@@ -460,6 +493,7 @@
         updateVolume(id);
       }
     });
+    stopSessionKeeper();
     updateStatus();
     updateMediaSession();
   });
@@ -486,6 +520,7 @@
                 updateVolume(id);
               }
             });
+            stopSessionKeeper();
             masterVolume = startMaster;
             document.getElementById('masterVol').value = startMaster * 100;
             document.getElementById('masterVolVal').textContent = Math.round(startMaster * 100);
@@ -512,6 +547,7 @@
     if (ctx.state === 'suspended') {
       try { await ctx.resume(); } catch {}
     }
+    startSessionKeeper();
     Object.entries(tracks).forEach(([id, t]) => {
       if (t.active) {
         t.audio.pause();
