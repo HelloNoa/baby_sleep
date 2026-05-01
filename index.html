@@ -283,6 +283,27 @@
   const tracks = {};
   let masterVolume = 0.7;
   let timerHandle = null;
+  let audioCtx = null;
+
+  function getAudioCtx() {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new Ctx();
+    }
+    return audioCtx;
+  }
+
+  function ensureRouting(id) {
+    const t = tracks[id];
+    if (t.source) return;
+    const ctx = getAudioCtx();
+    t.source = ctx.createMediaElementSource(t.audio);
+    t.gainNode = ctx.createGain();
+    t.gainNode.gain.value = 0;
+    t.source.connect(t.gainNode);
+    t.gainNode.connect(ctx.destination);
+    t.audio.volume = 1;
+  }
 
   const catContainer = document.getElementById('categories');
   CATEGORIES.forEach(cat => {
@@ -312,9 +333,9 @@
       const audio = new Audio();
       audio.loop = true;
       audio.preload = 'metadata';
-      audio.volume = 0;
+      audio.crossOrigin = 'anonymous';
       audio.src = s.file;
-      tracks[s.id] = { audio, vol: 0.5, active: false };
+      tracks[s.id] = { audio, source: null, gainNode: null, vol: 0.5, active: false };
 
       card.addEventListener('click', e => {
         if (e.target.tagName === 'INPUT') return;
@@ -323,6 +344,7 @@
 
       const slider = card.querySelector(`input[data-vol="${s.id}"]`);
       slider.addEventListener('click', e => e.stopPropagation());
+      slider.addEventListener('pointerdown', e => e.stopPropagation());
       slider.addEventListener('input', () => {
         tracks[s.id].vol = slider.value / 100;
         card.querySelector(`[data-val="${s.id}"]`).textContent = slider.value;
@@ -332,27 +354,88 @@
     catContainer.appendChild(section);
   });
 
-  function toggleTrack(id) {
+  async function toggleTrack(id) {
     const t = tracks[id];
     const card = document.querySelector(`.card[data-id="${id}"]`);
     if (t.active) {
       t.audio.pause();
       t.active = false;
       card.classList.remove('active');
-    } else {
-      t.audio.play().catch(e => {
-        document.getElementById('status').textContent = '재생 실패: ' + e.message;
-      });
-      t.active = true;
-      card.classList.add('active');
       updateVolume(id);
+    } else {
+      const ctx = getAudioCtx();
+      if (ctx.state === 'suspended') {
+        try { await ctx.resume(); } catch {}
+      }
+      ensureRouting(id);
+      try {
+        await t.audio.play();
+        t.active = true;
+        card.classList.add('active');
+        updateVolume(id);
+      } catch (e) {
+        document.getElementById('status').textContent = '재생 실패: ' + e.message;
+      }
     }
     updateStatus();
+    updateMediaSession();
   }
 
   function updateVolume(id) {
     const t = tracks[id];
-    t.audio.volume = t.active ? t.vol * masterVolume : 0;
+    const target = t.active ? t.vol * masterVolume : 0;
+    if (t.gainNode) {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      t.gainNode.gain.cancelScheduledValues(now);
+      t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
+      t.gainNode.gain.linearRampToValueAtTime(target, now + 0.05);
+    } else {
+      t.audio.volume = target;
+    }
+  }
+
+  function updateMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    const playing = Object.entries(tracks).filter(([, t]) => t.active);
+    if (playing.length === 0) {
+      navigator.mediaSession.playbackState = 'paused';
+      return;
+    }
+    const names = playing.map(([id]) => SOUNDS.find(s => s.id === id)?.name).filter(Boolean);
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: names.length === 1 ? names[0] : `${playing.length}개 소리 믹스`,
+      artist: '🌙 아기 백색소음 믹서',
+      album: names.join(' + '),
+    });
+    navigator.mediaSession.playbackState = 'playing';
+  }
+
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('pause', () => {
+      Object.entries(tracks).forEach(([id, t]) => {
+        if (t.active) {
+          t.audio.pause();
+          t.active = false;
+          document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
+          updateVolume(id);
+        }
+      });
+      updateStatus();
+      updateMediaSession();
+    });
+    navigator.mediaSession.setActionHandler('play', () => {
+      Object.entries(tracks).forEach(([id, t]) => {
+        if (t.audio.paused && t.gainNode) {
+          t.audio.play().catch(()=>{});
+          t.active = true;
+          document.querySelector(`.card[data-id="${id}"]`).classList.add('active');
+          updateVolume(id);
+        }
+      });
+      updateStatus();
+      updateMediaSession();
+    });
   }
 
   function updateStatus() {
@@ -374,9 +457,11 @@
         t.audio.pause();
         t.active = false;
         document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
+        updateVolume(id);
       }
     });
     updateStatus();
+    updateMediaSession();
   });
 
   document.getElementById('timer').addEventListener('change', e => {
@@ -398,12 +483,14 @@
                 t.audio.pause();
                 t.active = false;
                 document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
+                updateVolume(id);
               }
             });
             masterVolume = startMaster;
             document.getElementById('masterVol').value = startMaster * 100;
             document.getElementById('masterVolVal').textContent = Math.round(startMaster * 100);
             document.getElementById('status').textContent = '⏱ 타이머 종료';
+            updateMediaSession();
           }
         }, 250);
       }, min * 60 * 1000);
@@ -420,12 +507,17 @@
     presetContainer.appendChild(btn);
   });
 
-  function applyPreset(preset) {
+  async function applyPreset(preset) {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') {
+      try { await ctx.resume(); } catch {}
+    }
     Object.entries(tracks).forEach(([id, t]) => {
       if (t.active) {
         t.audio.pause();
         t.active = false;
         document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
+        updateVolume(id);
       }
     });
     setTimeout(() => {
@@ -437,12 +529,14 @@
         const valEl = document.querySelector(`[data-val="${id}"]`);
         if (valEl) valEl.textContent = vol;
         const card = document.querySelector(`.card[data-id="${id}"]`);
+        ensureRouting(id);
         tracks[id].audio.play().catch(()=>{});
         tracks[id].active = true;
-        tracks[id].audio.volume = (vol / 100) * masterVolume;
         card.classList.add('active');
+        updateVolume(id);
       });
       updateStatus();
+      updateMediaSession();
     }, 80);
   }
 </script>
