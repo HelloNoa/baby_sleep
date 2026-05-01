@@ -284,30 +284,32 @@
   let masterVolume = 0.7;
   let timerHandle = null;
   let audioCtx = null;
+  let mixDest = null;
+  let outputEl = null;
 
-  // iOS audio session keeper: a silent <audio> playing in loop, NOT routed
-  // through Web Audio. Keeps iOS from pausing the page when backgrounded /
-  // screen locked. Without this, AudioContext suspends and the mix stops.
-  const silentKeeper = new Audio('silent.wav');
-  silentKeeper.loop = true;
-  silentKeeper.preload = 'auto';
-
-  function getAudioCtx() {
-    if (!audioCtx) {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      audioCtx = new Ctx();
-    }
-    return audioCtx;
+  // iOS background-audio strategy:
+  // 1. Each track <audio> -> MediaElementSource -> Gain -> mixDest (a
+  //    MediaStreamAudioDestinationNode), NOT directly to ctx.destination.
+  // 2. A single "output" <audio> element plays the mix via srcObject.
+  // 3. iOS keeps the page's audio session alive because outputEl is producing
+  //    real (mixed) audio output, so AudioContext doesn't suspend on lock /
+  //    background and the mix keeps playing.
+  function initAudio() {
+    if (audioCtx) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new Ctx();
+    mixDest = audioCtx.createMediaStreamDestination();
+    outputEl = new Audio();
+    outputEl.srcObject = mixDest.stream;
+    outputEl.preload = 'auto';
   }
 
-  function startSessionKeeper() {
-    if (silentKeeper.paused) {
-      silentKeeper.play().catch(() => {});
+  function startOutput() {
+    if (outputEl && outputEl.paused) {
+      outputEl.play().catch(e => {
+        document.getElementById('status').textContent = '출력 시작 실패: ' + e.message;
+      });
     }
-  }
-
-  function stopSessionKeeper() {
-    silentKeeper.pause();
   }
 
   function anyActive() {
@@ -317,18 +319,19 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && audioCtx && audioCtx.state === 'suspended' && anyActive()) {
       audioCtx.resume().catch(() => {});
+      startOutput();
     }
   });
 
   function ensureRouting(id) {
     const t = tracks[id];
     if (t.source) return;
-    const ctx = getAudioCtx();
-    t.source = ctx.createMediaElementSource(t.audio);
-    t.gainNode = ctx.createGain();
+    initAudio();
+    t.source = audioCtx.createMediaElementSource(t.audio);
+    t.gainNode = audioCtx.createGain();
     t.gainNode.gain.value = 0;
     t.source.connect(t.gainNode);
-    t.gainNode.connect(ctx.destination);
+    t.gainNode.connect(mixDest);
     t.audio.volume = 1;
   }
 
@@ -389,14 +392,14 @@
       t.active = false;
       card.classList.remove('active');
       updateVolume(id);
-      if (!anyActive()) stopSessionKeeper();
     } else {
-      const ctx = getAudioCtx();
-      if (ctx.state === 'suspended') {
-        try { await ctx.resume(); } catch {}
-      }
-      startSessionKeeper();
+      // Synchronously start output element within user gesture (iOS).
+      initAudio();
+      startOutput();
       ensureRouting(id);
+      if (audioCtx.state === 'suspended') {
+        try { await audioCtx.resume(); } catch {}
+      }
       try {
         await t.audio.play();
         t.active = true;
@@ -413,9 +416,8 @@
   function updateVolume(id) {
     const t = tracks[id];
     const target = t.active ? t.vol * masterVolume : 0;
-    if (t.gainNode) {
-      const ctx = getAudioCtx();
-      const now = ctx.currentTime;
+    if (t.gainNode && audioCtx) {
+      const now = audioCtx.currentTime;
       t.gainNode.gain.cancelScheduledValues(now);
       t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
       t.gainNode.gain.linearRampToValueAtTime(target, now + 0.05);
@@ -450,22 +452,19 @@
           updateVolume(id);
         }
       });
-      stopSessionKeeper();
       updateStatus();
       updateMediaSession();
     });
     navigator.mediaSession.setActionHandler('play', () => {
-      let resumed = false;
       Object.entries(tracks).forEach(([id, t]) => {
         if (t.audio.paused && t.gainNode) {
           t.audio.play().catch(()=>{});
           t.active = true;
-          resumed = true;
           document.querySelector(`.card[data-id="${id}"]`).classList.add('active');
           updateVolume(id);
         }
       });
-      if (resumed) startSessionKeeper();
+      startOutput();
       updateStatus();
       updateMediaSession();
     });
@@ -493,7 +492,6 @@
         updateVolume(id);
       }
     });
-    stopSessionKeeper();
     updateStatus();
     updateMediaSession();
   });
@@ -520,7 +518,6 @@
                 updateVolume(id);
               }
             });
-            stopSessionKeeper();
             masterVolume = startMaster;
             document.getElementById('masterVol').value = startMaster * 100;
             document.getElementById('masterVolVal').textContent = Math.round(startMaster * 100);
@@ -543,11 +540,11 @@
   });
 
   async function applyPreset(preset) {
-    const ctx = getAudioCtx();
-    if (ctx.state === 'suspended') {
-      try { await ctx.resume(); } catch {}
+    initAudio();
+    startOutput();
+    if (audioCtx.state === 'suspended') {
+      try { await audioCtx.resume(); } catch {}
     }
-    startSessionKeeper();
     Object.entries(tracks).forEach(([id, t]) => {
       if (t.active) {
         t.audio.pause();
