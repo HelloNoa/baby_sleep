@@ -213,6 +213,160 @@
   }
   .user-preset-delete:hover { background: rgba(240,80,80,1); }
 
+  /* Custom (user-uploaded/recorded) sounds */
+  .custom-sounds-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .custom-add-btn {
+    background: rgba(135,206,250,0.18);
+    border: 1px dashed rgba(135,206,250,0.5);
+    color: #fff;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .custom-add-btn:hover { background: rgba(135,206,250,0.32); }
+  .custom-card { border-color: rgba(255,215,120,0.4); }
+  .custom-card.active {
+    background: rgba(255,215,120,0.22);
+    border-color: rgba(255,215,120,0.7);
+    box-shadow: 0 0 20px rgba(255,215,120,0.18);
+  }
+  .custom-card.active .led {
+    background: #ffd778;
+    box-shadow: 0 0 10px #ffd778;
+  }
+  .custom-controls {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(255,255,255,0.12);
+    font-size: 12px;
+  }
+  .custom-card.expanded .custom-controls { display: block; }
+  .custom-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .custom-row label { opacity: 0.8; }
+  .custom-row select, .custom-row input[type="number"] {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+  .custom-row input[type="number"] { width: 70px; }
+  .custom-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .custom-action-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .custom-action-btn.danger {
+    background: rgba(220,80,80,0.2);
+    border-color: rgba(220,80,80,0.45);
+  }
+  .gear-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: #fff;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+  .gear-btn:hover { background: rgba(255,255,255,0.22); }
+
+  /* Recording modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: #16213e;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+    color: #fff;
+  }
+  .modal h2 { font-size: 18px; margin-bottom: 12px; }
+  .modal p { font-size: 13px; opacity: 0.75; margin-bottom: 16px; }
+  .rec-display {
+    text-align: center;
+    font-size: 32px;
+    font-variant-numeric: tabular-nums;
+    margin: 16px 0;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+  }
+  .rec-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ff5050;
+    margin-right: 8px;
+    animation: pulse 1s infinite;
+    vertical-align: middle;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .modal-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .modal-btn.primary {
+    background: rgba(135,206,250,0.3);
+    border-color: rgba(135,206,250,0.6);
+  }
+  .modal-btn.danger {
+    background: rgba(220,80,80,0.3);
+    border-color: rgba(220,80,80,0.6);
+  }
+  .modal-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
   .status-bar {
     text-align: center;
     margin-top: 18px;
@@ -254,7 +408,33 @@
     <button class="all-btn" id="applyUpdate" style="padding:5px 10px;font-size:12px;">업데이트</button>
   </div>
 
+  <div class="category" id="customCategory">
+    <div class="cat-title">👤 내 음원 (업로드 / 녹음)</div>
+    <div class="custom-sounds-bar">
+      <button class="custom-add-btn" id="addFileBtn">📁 파일 추가</button>
+      <button class="custom-add-btn" id="recordBtn">🎤 녹음하기</button>
+      <input type="file" id="fileInput" accept="audio/*" style="display:none;">
+    </div>
+    <div class="grid" id="customGrid"></div>
+  </div>
+
   <div id="categories"></div>
+
+  <div class="modal-backdrop" id="recModal">
+    <div class="modal">
+      <h2>🎤 음성 녹음</h2>
+      <p id="recHint">녹음 시작을 누르면 마이크 권한을 요청합니다. iOS는 녹음 중 다른 소리가 일시정지될 수 있어요.</p>
+      <div class="rec-display" id="recTime">00:00</div>
+      <audio id="recPreview" controls style="width:100%;display:none;margin-bottom:12px;"></audio>
+      <div class="modal-actions">
+        <button class="modal-btn" id="recCancel">취소</button>
+        <button class="modal-btn danger" id="recStop" style="display:none;">⏹ 정지</button>
+        <button class="modal-btn primary" id="recStart">⏺ 녹음 시작</button>
+        <button class="modal-btn" id="recRetry" style="display:none;">↻ 다시</button>
+        <button class="modal-btn primary" id="recSave" style="display:none;">💾 저장</button>
+      </div>
+    </div>
+  </div>
 
   <div class="preset-bar">
     <div class="preset-header">
@@ -380,6 +560,61 @@
     return mix;
   }
 
+  // -------- IndexedDB for custom sounds --------
+  const DB_NAME = 'BabySleepDB';
+  const DB_VERSION = 1;
+  const STORE_CUSTOM = 'customSounds';
+  let dbPromise = null;
+
+  function openDb() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_CUSTOM)) {
+          db.createObjectStore(STORE_CUSTOM, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+
+  async function dbPut(sound) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_CUSTOM, 'readwrite');
+      tx.objectStore(STORE_CUSTOM).put(sound);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function dbGetAll() {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_CUSTOM, 'readonly');
+      const req = tx.objectStore(STORE_CUSTOM).getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function dbDelete(id) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_CUSTOM, 'readwrite');
+      tx.objectStore(STORE_CUSTOM).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  // Maps custom sound id -> { sound: stored object, objectUrl: string }
+  const customRegistry = {};
+
   // iOS background-audio strategy:
   // 1. Each track <audio> -> MediaElementSource -> Gain -> mixDest (a
   //    MediaStreamAudioDestinationNode), NOT directly to ctx.destination.
@@ -477,11 +712,41 @@
     catContainer.appendChild(section);
   });
 
+  function startInterval(id) {
+    const t = tracks[id];
+    const reg = customRegistry[id];
+    if (!reg) return;
+    const ms = Math.max(1, reg.sound.intervalSec || 30) * 1000;
+    if (t.intervalHandle) clearInterval(t.intervalHandle);
+    t.intervalHandle = setInterval(() => {
+      try {
+        t.audio.currentTime = 0;
+        t.audio.play().catch(() => {});
+      } catch {}
+    }, ms);
+  }
+
+  function stopInterval(id) {
+    const t = tracks[id];
+    if (t.intervalHandle) {
+      clearInterval(t.intervalHandle);
+      t.intervalHandle = null;
+    }
+  }
+
+  function isIntervalMode(id) {
+    const t = tracks[id];
+    if (!t || !t.isCustom) return false;
+    const reg = customRegistry[id];
+    return !!(reg && reg.sound.loopMode === 'interval');
+  }
+
   async function toggleTrack(id) {
     const t = tracks[id];
     const card = document.querySelector(`.card[data-id="${id}"]`);
     if (t.active) {
       t.audio.pause();
+      stopInterval(id);
       t.active = false;
       card.classList.remove('active');
       updateVolume(id);
@@ -489,6 +754,10 @@
       // Synchronously start output element within user gesture (iOS).
       initAudio();
       startOutput();
+      // Apply current loop setting (interval mode plays one-shot, then re-fires).
+      if (t.isCustom) {
+        t.audio.loop = !isIntervalMode(id);
+      }
       ensureRouting(id);
       if (audioCtx.state === 'suspended') {
         try { await audioCtx.resume(); } catch {}
@@ -498,6 +767,7 @@
         t.active = true;
         card.classList.add('active');
         updateVolume(id);
+        if (isIntervalMode(id)) startInterval(id);
       } catch (e) {
         document.getElementById('status').textContent = '재생 실패: ' + e.message;
       }
@@ -540,6 +810,7 @@
       Object.entries(tracks).forEach(([id, t]) => {
         if (t.active) {
           t.audio.pause();
+          stopInterval(id);
           t.active = false;
           document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
           updateVolume(id);
@@ -551,10 +822,12 @@
     navigator.mediaSession.setActionHandler('play', () => {
       Object.entries(tracks).forEach(([id, t]) => {
         if (t.audio.paused && t.gainNode) {
+          if (t.isCustom) t.audio.loop = !isIntervalMode(id);
           t.audio.play().catch(()=>{});
           t.active = true;
           document.querySelector(`.card[data-id="${id}"]`).classList.add('active');
           updateVolume(id);
+          if (isIntervalMode(id)) startInterval(id);
         }
       });
       startOutput();
@@ -580,6 +853,7 @@
     Object.entries(tracks).forEach(([id, t]) => {
       if (t.active) {
         t.audio.pause();
+        stopInterval(id);
         t.active = false;
         document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
         updateVolume(id);
@@ -606,6 +880,7 @@
             Object.entries(tracks).forEach(([id, t]) => {
               if (t.active) {
                 t.audio.pause();
+                stopInterval(id);
                 t.active = false;
                 document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
                 updateVolume(id);
@@ -702,6 +977,7 @@
     Object.entries(tracks).forEach(([id, t]) => {
       if (t.active) {
         t.audio.pause();
+        stopInterval(id);
         t.active = false;
         document.querySelector(`.card[data-id="${id}"]`).classList.remove('active');
         updateVolume(id);
@@ -717,10 +993,12 @@
         if (valEl) valEl.textContent = vol;
         const card = document.querySelector(`.card[data-id="${id}"]`);
         ensureRouting(id);
+        if (tracks[id].isCustom) tracks[id].audio.loop = !isIntervalMode(id);
         tracks[id].audio.play().catch(()=>{});
         tracks[id].active = true;
-        card.classList.add('active');
+        if (card) card.classList.add('active');
         updateVolume(id);
+        if (isIntervalMode(id)) startInterval(id);
       });
       updateStatus();
       updateMediaSession();
@@ -781,6 +1059,373 @@
       });
     });
   }
+
+  // -------- Custom sounds (upload / record) --------
+  const customGrid = document.getElementById('customGrid');
+
+  function makeCustomCard(sound) {
+    const card = document.createElement('div');
+    card.className = 'card custom-card';
+    card.dataset.id = sound.id;
+    card.innerHTML = `
+      <button class="gear-btn" type="button" title="설정">⚙</button>
+      <div class="card-head">
+        <div class="icon">${sound.icon || '🎵'}</div>
+        <div class="name"></div>
+        <div class="led"></div>
+      </div>
+      <div class="meta">${sound.loopMode === 'interval' ? `${sound.intervalSec}초마다 반복` : '연속 재생'}</div>
+      <div class="vol-row">
+        <span style="font-size:11px;opacity:0.5">🔉</span>
+        <input type="range" min="0" max="100" value="50" data-vol="${sound.id}">
+        <span class="val" data-val="${sound.id}">50</span>
+      </div>
+      <div class="custom-controls">
+        <div class="custom-row">
+          <label>이름</label>
+          <input type="text" class="custom-name-input" value="" style="flex:1;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:4px 8px;font-size:12px;">
+        </div>
+        <div class="custom-row">
+          <label>재생 방식</label>
+          <select class="custom-loop-select">
+            <option value="continuous">연속 재생 (loop)</option>
+            <option value="interval">N초마다 반복</option>
+          </select>
+        </div>
+        <div class="custom-row custom-interval-row" style="display:none;">
+          <label>간격</label>
+          <input type="number" class="custom-interval-input" min="1" max="3600" step="1">
+          <span style="opacity:0.6;">초</span>
+        </div>
+        <div class="custom-actions">
+          <button class="custom-action-btn custom-save-btn" type="button">저장</button>
+          <button class="custom-action-btn danger custom-delete-btn" type="button">삭제</button>
+        </div>
+      </div>
+    `;
+    card.querySelector('.name').textContent = sound.name;
+
+    const nameInput = card.querySelector('.custom-name-input');
+    const loopSelect = card.querySelector('.custom-loop-select');
+    const intervalRow = card.querySelector('.custom-interval-row');
+    const intervalInput = card.querySelector('.custom-interval-input');
+
+    nameInput.value = sound.name;
+    loopSelect.value = sound.loopMode || 'continuous';
+    intervalInput.value = sound.intervalSec || 30;
+    intervalRow.style.display = loopSelect.value === 'interval' ? 'flex' : 'none';
+
+    loopSelect.addEventListener('change', () => {
+      intervalRow.style.display = loopSelect.value === 'interval' ? 'flex' : 'none';
+    });
+
+    // Stop propagation on inner controls so card click doesn't toggle
+    ['click', 'pointerdown'].forEach(ev => {
+      card.querySelectorAll('input, select, button.custom-action-btn, button.custom-save-btn, button.custom-delete-btn, button.gear-btn')
+        .forEach(el => el.addEventListener(ev, e => e.stopPropagation()));
+    });
+
+    card.querySelector('.gear-btn').addEventListener('click', () => {
+      card.classList.toggle('expanded');
+    });
+
+    card.querySelector('.custom-save-btn').addEventListener('click', async () => {
+      const reg = customRegistry[sound.id];
+      if (!reg) return;
+      const newName = nameInput.value.trim() || sound.name;
+      const newLoop = loopSelect.value;
+      const newInterval = Math.max(1, Math.min(3600, parseInt(intervalInput.value, 10) || 30));
+      reg.sound.name = newName;
+      reg.sound.loopMode = newLoop;
+      reg.sound.intervalSec = newInterval;
+      try {
+        await dbPut(reg.sound);
+        card.querySelector('.name').textContent = newName;
+        card.querySelector('.meta').textContent = newLoop === 'interval' ? `${newInterval}초마다 반복` : '연속 재생';
+        // If currently playing, restart with new mode
+        if (tracks[sound.id].active) {
+          stopInterval(sound.id);
+          tracks[sound.id].audio.loop = newLoop !== 'interval';
+          if (newLoop === 'interval') startInterval(sound.id);
+        }
+        document.getElementById('status').textContent = '✓ 설정 저장됨';
+        card.classList.remove('expanded');
+      } catch (e) {
+        document.getElementById('status').textContent = '저장 실패: ' + e.message;
+      }
+    });
+
+    card.querySelector('.custom-delete-btn').addEventListener('click', async () => {
+      if (!confirm(`"${sound.name}" 음원을 삭제할까요?`)) return;
+      await deleteCustomSound(sound.id);
+    });
+
+    // Card click toggles play
+    card.addEventListener('click', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON') return;
+      toggleTrack(sound.id);
+    });
+
+    const slider = card.querySelector(`input[type="range"][data-vol="${sound.id}"]`);
+    slider.addEventListener('input', () => {
+      tracks[sound.id].vol = slider.value / 100;
+      card.querySelector(`[data-val="${sound.id}"]`).textContent = slider.value;
+      updateVolume(sound.id);
+    });
+
+    return card;
+  }
+
+  function registerCustomSound(sound) {
+    const objectUrl = URL.createObjectURL(sound.blob);
+    customRegistry[sound.id] = { sound, objectUrl };
+
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    audio.src = objectUrl;
+    audio.crossOrigin = 'anonymous';
+    audio.loop = sound.loopMode !== 'interval';
+
+    tracks[sound.id] = {
+      audio,
+      source: null,
+      gainNode: null,
+      vol: 0.5,
+      active: false,
+      isCustom: true,
+      intervalHandle: null,
+    };
+
+    const card = makeCustomCard(sound);
+    customGrid.appendChild(card);
+  }
+
+  async function deleteCustomSound(id) {
+    const t = tracks[id];
+    const reg = customRegistry[id];
+    if (t && t.active) {
+      t.audio.pause();
+      stopInterval(id);
+      t.active = false;
+    }
+    if (reg) URL.revokeObjectURL(reg.objectUrl);
+    if (t && t.source) try { t.source.disconnect(); } catch {}
+    if (t && t.gainNode) try { t.gainNode.disconnect(); } catch {}
+    delete tracks[id];
+    delete customRegistry[id];
+    const card = document.querySelector(`.custom-card[data-id="${id}"]`);
+    if (card) card.remove();
+    try { await dbDelete(id); } catch {}
+    updateStatus();
+    updateMediaSession();
+  }
+
+  async function loadCustomSounds() {
+    try {
+      const list = await dbGetAll();
+      list.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      list.forEach(registerCustomSound);
+    } catch (e) {
+      document.getElementById('status').textContent = '내 음원 로드 실패: ' + e.message;
+    }
+  }
+
+  // ---- File upload ----
+  document.getElementById('addFileBtn').addEventListener('click', () => {
+    document.getElementById('fileInput').click();
+  });
+
+  document.getElementById('fileInput').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) {
+      document.getElementById('status').textContent = '오디오 파일만 추가 가능합니다';
+      return;
+    }
+    const defaultName = file.name.replace(/\.[^.]+$/, '');
+    const name = (prompt('음원 이름:', defaultName) || '').trim();
+    if (!name) return;
+    const sound = {
+      id: 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      name,
+      icon: '🎵',
+      blob: file,
+      mimeType: file.type,
+      loopMode: 'continuous',
+      intervalSec: 30,
+      createdAt: Date.now(),
+    };
+    try {
+      await dbPut(sound);
+      registerCustomSound(sound);
+      document.getElementById('status').textContent = `✓ "${name}" 추가됨`;
+    } catch (err) {
+      document.getElementById('status').textContent = '저장 실패: ' + err.message;
+    }
+  });
+
+  // ---- Recording ----
+  const recModal = document.getElementById('recModal');
+  const recStartBtn = document.getElementById('recStart');
+  const recStopBtn = document.getElementById('recStop');
+  const recCancelBtn = document.getElementById('recCancel');
+  const recRetryBtn = document.getElementById('recRetry');
+  const recSaveBtn = document.getElementById('recSave');
+  const recPreview = document.getElementById('recPreview');
+  const recTime = document.getElementById('recTime');
+  const recHint = document.getElementById('recHint');
+
+  let mediaRecorder = null;
+  let recChunks = [];
+  let recTimerHandle = null;
+  let recStartTime = 0;
+  let recBlob = null;
+  let recStream = null;
+
+  function pickRecorderMime() {
+    const candidates = [
+      'audio/mp4',
+      'audio/mp4;codecs=mp4a.40.2',
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+    ];
+    if (!('MediaRecorder' in window)) return null;
+    for (const m of candidates) {
+      if (MediaRecorder.isTypeSupported(m)) return m;
+    }
+    return '';
+  }
+
+  function resetRecModalUi() {
+    recStartBtn.style.display = '';
+    recStartBtn.disabled = false;
+    recStopBtn.style.display = 'none';
+    recRetryBtn.style.display = 'none';
+    recSaveBtn.style.display = 'none';
+    recPreview.style.display = 'none';
+    recPreview.removeAttribute('src');
+    recTime.innerHTML = '00:00';
+    recHint.textContent = '녹음 시작을 누르면 마이크 권한을 요청합니다. iOS는 녹음 중 다른 소리가 일시정지될 수 있어요.';
+    recBlob = null;
+  }
+
+  function fmtTime(ms) {
+    const s = Math.floor(ms / 1000);
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  function stopRecStream() {
+    if (recStream) {
+      recStream.getTracks().forEach(t => t.stop());
+      recStream = null;
+    }
+  }
+
+  document.getElementById('recordBtn').addEventListener('click', () => {
+    if (!('MediaRecorder' in window) || !navigator.mediaDevices) {
+      document.getElementById('status').textContent = '이 브라우저는 녹음을 지원하지 않습니다';
+      return;
+    }
+    resetRecModalUi();
+    recModal.classList.add('open');
+  });
+
+  recCancelBtn.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try { mediaRecorder.stop(); } catch {}
+    }
+    if (recTimerHandle) { clearInterval(recTimerHandle); recTimerHandle = null; }
+    stopRecStream();
+    recModal.classList.remove('open');
+  });
+
+  recStartBtn.addEventListener('click', async () => {
+    recStartBtn.disabled = true;
+    try {
+      recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      recHint.textContent = '마이크 권한 거부됨: ' + err.message;
+      recStartBtn.disabled = false;
+      return;
+    }
+    const mime = pickRecorderMime();
+    try {
+      mediaRecorder = mime
+        ? new MediaRecorder(recStream, { mimeType: mime })
+        : new MediaRecorder(recStream);
+    } catch (err) {
+      recHint.textContent = '녹음기 생성 실패: ' + err.message;
+      stopRecStream();
+      recStartBtn.disabled = false;
+      return;
+    }
+    recChunks = [];
+    mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const type = mediaRecorder.mimeType || mime || 'audio/webm';
+      recBlob = new Blob(recChunks, { type });
+      const url = URL.createObjectURL(recBlob);
+      recPreview.src = url;
+      recPreview.style.display = 'block';
+      recRetryBtn.style.display = '';
+      recSaveBtn.style.display = '';
+      recHint.textContent = '미리듣기 후 저장하세요.';
+      stopRecStream();
+    };
+    recChunks = [];
+    mediaRecorder.start();
+    recStartTime = Date.now();
+    recHint.innerHTML = '녹음 중입니다...';
+    recStartBtn.style.display = 'none';
+    recStopBtn.style.display = '';
+    recTime.innerHTML = '<span class="rec-dot"></span>00:00';
+    recTimerHandle = setInterval(() => {
+      recTime.innerHTML = '<span class="rec-dot"></span>' + fmtTime(Date.now() - recStartTime);
+    }, 250);
+  });
+
+  recStopBtn.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try { mediaRecorder.stop(); } catch {}
+    }
+    if (recTimerHandle) { clearInterval(recTimerHandle); recTimerHandle = null; }
+    recStopBtn.style.display = 'none';
+    recTime.innerHTML = fmtTime(Date.now() - recStartTime);
+  });
+
+  recRetryBtn.addEventListener('click', () => {
+    resetRecModalUi();
+  });
+
+  recSaveBtn.addEventListener('click', async () => {
+    if (!recBlob) return;
+    const defaultName = '녹음 ' + new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const name = (prompt('녹음 이름:', defaultName) || '').trim();
+    if (!name) return;
+    const sound = {
+      id: 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      name,
+      icon: '🎤',
+      blob: recBlob,
+      mimeType: recBlob.type,
+      loopMode: 'continuous',
+      intervalSec: 30,
+      createdAt: Date.now(),
+    };
+    try {
+      await dbPut(sound);
+      registerCustomSound(sound);
+      document.getElementById('status').textContent = `✓ "${name}" 저장됨`;
+      recModal.classList.remove('open');
+    } catch (err) {
+      document.getElementById('status').textContent = '저장 실패: ' + err.message;
+    }
+  });
+
+  // Load custom sounds on startup
+  loadCustomSounds();
 </script>
 </body>
 </html>

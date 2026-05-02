@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION to force clients to fetch fresh shell assets.
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 const AUDIO_CACHE = `audio-${CACHE_VERSION}`;
 
