@@ -152,6 +152,24 @@
     margin-top: 22px;
   }
   .preset-title { font-size: 12px; opacity: 0.6; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .preset-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .save-preset-btn {
+    background: rgba(135,206,250,0.22);
+    border: 1px solid rgba(135,206,250,0.45);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .save-preset-btn:hover { background: rgba(135,206,250,0.4); }
   .preset-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
   .preset {
     background: rgba(255,255,255,0.08);
@@ -163,6 +181,37 @@
     cursor: pointer;
   }
   .preset:hover { background: rgba(135,206,250,0.25); border-color: rgba(135,206,250,0.5); }
+  .user-preset-wrap {
+    position: relative;
+    display: inline-block;
+  }
+  .user-preset {
+    background: rgba(255,215,120,0.12);
+    border-color: rgba(255,215,120,0.35);
+  }
+  .user-preset:hover {
+    background: rgba(255,215,120,0.28);
+    border-color: rgba(255,215,120,0.6);
+  }
+  .user-preset-delete {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(220,80,80,0.85);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .user-preset-delete:hover { background: rgba(240,80,80,1); }
 
   .status-bar {
     text-align: center;
@@ -208,8 +257,15 @@
   <div id="categories"></div>
 
   <div class="preset-bar">
-    <div class="preset-title">⚡ 프리셋 (자주 쓰는 조합)</div>
+    <div class="preset-header">
+      <div class="preset-title">⚡ 프리셋 (자주 쓰는 조합)</div>
+      <button class="save-preset-btn" id="savePresetBtn">💾 현재 믹스 저장</button>
+    </div>
     <div class="preset-buttons" id="presets"></div>
+    <div class="user-preset-section" id="userPresetSection" style="display:none;">
+      <div class="preset-title" style="margin-top:14px;">⭐ 내 프리셋</div>
+      <div class="preset-buttons" id="userPresets"></div>
+    </div>
   </div>
 
   <div class="status-bar" id="status">소리 카드를 클릭하면 켜집니다 · 여러 개 동시 켜기 가능</div>
@@ -297,6 +353,32 @@
   let audioCtx = null;
   let mixDest = null;
   let outputEl = null;
+
+  const USER_PRESETS_KEY = 'baby_sleep_user_presets';
+  const USER_PRESETS_LIMIT = 50;
+
+  function loadUserPresets() {
+    try {
+      const raw = localStorage.getItem(USER_PRESETS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  }
+
+  function saveUserPresets(arr) {
+    try {
+      localStorage.setItem(USER_PRESETS_KEY, JSON.stringify(arr));
+    } catch (e) {
+      document.getElementById('status').textContent = '저장 실패: ' + e.message;
+    }
+  }
+
+  function captureCurrentMix() {
+    const mix = {};
+    Object.entries(tracks).forEach(([id, t]) => {
+      if (t.active) mix[id] = Math.round(t.vol * 100);
+    });
+    return mix;
+  }
 
   // iOS background-audio strategy:
   // 1. Each track <audio> -> MediaElementSource -> Gain -> mixDest (a
@@ -549,6 +631,67 @@
     btn.addEventListener('click', () => applyPreset(preset));
     presetContainer.appendChild(btn);
   });
+
+  const userPresetSection = document.getElementById('userPresetSection');
+  const userPresetContainer = document.getElementById('userPresets');
+
+  function renderUserPresets() {
+    const list = loadUserPresets();
+    userPresetContainer.innerHTML = '';
+    if (list.length === 0) {
+      userPresetSection.style.display = 'none';
+      return;
+    }
+    userPresetSection.style.display = 'block';
+    list.forEach((preset, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'user-preset-wrap';
+
+      const btn = document.createElement('button');
+      btn.className = 'preset user-preset';
+      btn.textContent = preset.name;
+      btn.addEventListener('click', () => applyPreset(preset));
+
+      const del = document.createElement('button');
+      del.className = 'user-preset-delete';
+      del.textContent = '×';
+      del.title = '삭제';
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`"${preset.name}" 프리셋을 삭제할까요?`)) {
+          const cur = loadUserPresets();
+          cur.splice(idx, 1);
+          saveUserPresets(cur);
+          renderUserPresets();
+        }
+      });
+
+      wrap.appendChild(btn);
+      wrap.appendChild(del);
+      userPresetContainer.appendChild(wrap);
+    });
+  }
+
+  document.getElementById('savePresetBtn').addEventListener('click', () => {
+    const mix = captureCurrentMix();
+    if (Object.keys(mix).length === 0) {
+      document.getElementById('status').textContent = '저장할 소리가 없습니다 — 카드를 먼저 탭하세요';
+      return;
+    }
+    const name = (prompt('프리셋 이름을 입력하세요:', '') || '').trim();
+    if (!name) return;
+    const list = loadUserPresets();
+    if (list.length >= USER_PRESETS_LIMIT) {
+      document.getElementById('status').textContent = `프리셋이 너무 많습니다 (최대 ${USER_PRESETS_LIMIT}개)`;
+      return;
+    }
+    list.push({ name, mix });
+    saveUserPresets(list);
+    renderUserPresets();
+    document.getElementById('status').textContent = `✓ "${name}" 저장됨`;
+  });
+
+  renderUserPresets();
 
   async function applyPreset(preset) {
     initAudio();
